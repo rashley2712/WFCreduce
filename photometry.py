@@ -54,9 +54,11 @@ if __name__ == "__main__":
 		targetList.append(target)
 	print("Number of reduction apertures:", len(targets))
 	
-	cutFigure = matplotlib.pyplot.figure()
-	fitFigure = matplotlib.pyplot.figure()
-	plotGaussian = matplotlib.pyplot.figure()
+	plot = False
+	if plot: 
+		cutFigure = matplotlib.pyplot.figure()
+		fitFigure = matplotlib.pyplot.figure()
+		plotGaussian = matplotlib.pyplot.figure()
 	for frame in frameList.allFrames:
 		FITSfile = frame['filesource']
 		hdul = astropy.io.fits.open(FITSfile)
@@ -84,18 +86,19 @@ if __name__ == "__main__":
 		# Cut out a bit of the image near the target
 		t = targets[0]
 		size = 20
-		offsety = 0
-		offsetx = 0
+		offsety = -int(frame['dy'])
+		offsetx = -int(frame['dx'])
 
-		from mpl_toolkits.mplot3d import Axes3D 
-		from matplotlib import cm
 		left, right = (int(t.rootPosition[0]-size/2), int(t.rootPosition[0]+size/2))
 		top, bottom= (int(t.rootPosition[1]-size/2), int(t.rootPosition[1]+size/2))
 		imageCut = imageData[ top-offsety:bottom-offsety , left-offsetx:right-offsetx ] 
-		matplotlib.pyplot.figure(cutFigure.number)
-		amplifiedImage = generallib.percentiles(imageCut, 5, 95)
-		matplotlib.pyplot.imshow(amplifiedImage)
-		matplotlib.pyplot.gca().invert_yaxis()
+		if plot: 
+			from mpl_toolkits.mplot3d import Axes3D 
+			from matplotlib import cm
+			matplotlib.pyplot.figure(cutFigure.number)
+			amplifiedImage = generallib.percentiles(imageCut, 5, 95)
+			matplotlib.pyplot.imshow(amplifiedImage)
+			matplotlib.pyplot.gca().invert_yaxis()
 		x = numpy.arange(0, size, 1)
 		y = numpy.arange(0, size, 1)
 		x, y = numpy.meshgrid(x, y)
@@ -120,34 +123,36 @@ if __name__ == "__main__":
 		#yradius = 2.35*c
 		#print("position and FWHM: ", xCenter, yCenter, xradius, yradius)
 		print("position and FWHM: ", xCenter, yCenter, radius*2)
-		matplotlib.pyplot.plot([xCenter, xCenter], [0, size], color="red")
-		matplotlib.pyplot.plot([0, size], [yCenter, yCenter], color="red")
-		# Draw a circle at the FWHM
-		circle1 = matplotlib.pyplot.Circle((xCenter, yCenter), radius, color='r', fill=False)
-		matplotlib.pyplot.gca().add_artist(circle1)
+		if plot:
+			matplotlib.pyplot.plot([xCenter, xCenter], [0, size], color="red")
+			matplotlib.pyplot.plot([0, size], [yCenter, yCenter], color="red")
+			# Draw a circle at the FWHM
+			circle1 = matplotlib.pyplot.Circle((xCenter, yCenter), radius, color='r', fill=False)
+			matplotlib.pyplot.gca().add_artist(circle1)
 		
-		# Plot the 3-d image
-		matplotlib.pyplot.figure(plotGaussian.number)
-		ax = plotGaussian.gca(projection="3d")
-		surf = ax.plot_surface(x, y, z, linewidth=0, antialiased=True)
-		matplotlib.pyplot.draw()
+			# Plot the 3-d image
+			matplotlib.pyplot.figure(plotGaussian.number)
+			ax = plotGaussian.gca(projection="3d")
+			surf = ax.plot_surface(x, y, z, linewidth=0, antialiased=True)
+			matplotlib.pyplot.draw()
 
-		# Plot a 2-D map of the solution
-		matplotlib.pyplot.figure(fitFigure.number)
-		fit = Gaussian(xydata, amp, xc, yc, c)
-		fit.shape = (size, size)
-		ax = matplotlib.pyplot.gca()
-		im = ax.imshow(fit)
-		matplotlib.pyplot.gca().invert_yaxis()
-		matplotlib.pyplot.plot([xCenter, xCenter], [0, size], color="red")
-		matplotlib.pyplot.plot([0, size], [yCenter, yCenter], color="red")
-		circle1 = matplotlib.pyplot.Circle((xCenter, yCenter), radius, color='r', fill=False)
-		matplotlib.pyplot.gca().add_artist(circle1)
-		
-		matplotlib.pyplot.show(block=True)
+			# Plot a 2-D map of the solution
+			matplotlib.pyplot.figure(fitFigure.number)
+			fit = Gaussian(xydata, amp, xc, yc, c)
+			fit.shape = (size, size)
+			ax = matplotlib.pyplot.gca()
+			im = ax.imshow(fit)
+			matplotlib.pyplot.gca().invert_yaxis()
+			matplotlib.pyplot.plot([xCenter, xCenter], [0, size], color="red")
+			matplotlib.pyplot.plot([0, size], [yCenter, yCenter], color="red")
+			circle1 = matplotlib.pyplot.Circle((xCenter, yCenter), radius, color='r', fill=False)
+			matplotlib.pyplot.gca().add_artist(circle1)
+			
+			matplotlib.pyplot.show(block=True)
 
-		apertures = CircularAperture(positions, r=22.)
-		skyApertures = CircularAnnulus(positions, r_in=30., r_out=40.)
+		apertureScaler = radius * 1.6
+		apertures = CircularAperture(positions, r=apertureScaler)
+		skyApertures = CircularAnnulus(positions, r_in=apertureScaler+10, r_out=apertureScaler+18)
 		apers = [apertures, skyApertures]
 		apertures.plot(color='red', lw=1.5, alpha=0.7)
 		skyApertures.plot(color='blue', lw=1.5, alpha=0.7)
